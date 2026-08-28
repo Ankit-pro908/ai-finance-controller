@@ -19,33 +19,12 @@ GROUND_TRUTH_COLUMNS = [
 ]
 
 
-def create_ground_truth(exception):
-
-    expected_amount = exception["original_amount"]
-    actual_amount = exception["wrong_amount"]
-
-    difference = round(
-        expected_amount - actual_amount,
-        2,
-    )
-
-    ground_truth = {
-        "exception_id": "EX00001",
-        "payment_id": exception["payment_id"],
-        "exception_type": "SETTLEMENT_AMOUNT_MISMATCH",
-        "true_root_cause": "SETTLEMENT_AMOUNT_ERROR",
-        "expected_amount": expected_amount,
-        "actual_amount": actual_amount,
-        "difference": difference,
-        "expected_behavior": "INVESTIGATE_AND_RESOLVE",
-    }
+def create_ground_truth(records):
+    """
+    Convert a list of ground-truth records into a DataFrame.
+    """
 
     return pd.DataFrame(
-        [ground_truth],
+        records,
         columns=GROUND_TRUTH_COLUMNS,
     )
-
-
-if __name__ == "__main__":
-
-    print("Ground truth module created.")

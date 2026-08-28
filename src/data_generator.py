@@ -17,6 +17,10 @@ from schema import (
 
 fake = Faker("en_IN")
 
+# Make every run reproducible
+random.seed(42)
+Faker.seed(42)
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 
@@ -145,23 +149,33 @@ def generate_fees(payments_df: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------
 # 5. Refunds
 # ---------------------------------------------------------
+def generate_refunds(
+    payments_df: pd.DataFrame,
+) -> pd.DataFrame:
 
-def generate_refunds(payments_df: pd.DataFrame) -> pd.DataFrame:
     refunds = []
 
     refund_counter = 1
 
     for _, payment in payments_df.iterrows():
 
-        # Around 20% of payments get a refund
-        if random.random() >= 0.20:
+        payment_id = payment["payment_id"]
+
+        # PAY00004 is reserved for our refund test case.
+        # Other payments have a 20% refund probability.
+        if payment_id == "PAY00004":
+            should_refund = True
+        else:
+            should_refund = random.random() < 0.20
+
+        if not should_refund:
             continue
 
         payment_amount = money(
             payment["amount"]
         )
 
-        # Healthy baseline uses only partial refunds.
+        # Healthy baseline uses partial refunds.
         refund_percentage = Decimal(
             str(
                 round(
@@ -178,10 +192,12 @@ def generate_refunds(payments_df: pd.DataFrame) -> pd.DataFrame:
         refunds.append(
             {
                 "refund_id": f"REF{refund_counter:05d}",
-                "payment_id": payment["payment_id"],
+                "payment_id": payment_id,
                 "refund_amount": refund_amount,
                 "refund_date": (
-                    pd.Timestamp(payment["created_at"])
+                    pd.Timestamp(
+                        payment["created_at"]
+                    )
                     + pd.Timedelta(
                         days=random.randint(1, 5)
                     )
@@ -196,7 +212,6 @@ def generate_refunds(payments_df: pd.DataFrame) -> pd.DataFrame:
         refunds,
         columns=REFUND_COLUMNS,
     )
-
 
 # ---------------------------------------------------------
 # 6. Settlements
