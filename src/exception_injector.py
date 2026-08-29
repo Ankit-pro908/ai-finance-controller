@@ -363,29 +363,37 @@ def inject_duplicate_payment(data):
 # Exception 7
 # Conflicting evidence
 # ---------------------------------------------------------
-
 def inject_conflicting_evidence(data):
 
     payments_df = data["payments"]
     fees_df = data["fees"]
     refunds_df = data["refunds"]
     settlements_df = data["settlements"]
+    ledger_df = data["ledger"]
 
-    # Use PAY00007
-    target_rows = payments_df[
-        payments_df["payment_id"] == "PAY00007"
+    # -------------------------------------------------
+    # Target payment
+    # -------------------------------------------------
+
+    payment_id = "PAY00007"
+
+    payment_rows = payments_df[
+        payments_df["payment_id"] == payment_id
     ]
 
-    if target_rows.empty:
+    if payment_rows.empty:
         raise ValueError(
             "PAY00007 does not exist."
         )
 
-    payment = target_rows.iloc[0]
+    payment = payment_rows.iloc[0]
 
-    payment_id = payment["payment_id"]
+    payment_amount = payment["amount"]
 
-    # Find original fee
+    # -------------------------------------------------
+    # Original fee
+    # -------------------------------------------------
+
     fee_rows = fees_df[
         fees_df["payment_id"] == payment_id
     ]
@@ -399,15 +407,18 @@ def inject_conflicting_evidence(data):
 
     conflict_amount = 500.00
 
-    # ---------------------------------------------
-    # Candidate explanation 1: additional fee
-    # ---------------------------------------------
+    # -------------------------------------------------
+    # Candidate explanation 1:
+    # Additional fee of ₹500
+    #
+    # This is stored as candidate evidence.
+    # -------------------------------------------------
 
     new_fee = {
         "fee_id": "FEE_CONFLICT_01",
         "payment_id": payment_id,
         "fee_amount": conflict_amount,
-        "fee_type": "ADDITIONAL_FEE",
+        "fee_type": "CANDIDATE_ADDITIONAL_FEE",
         "created_at": payment["created_at"],
     }
 
@@ -419,20 +430,23 @@ def inject_conflicting_evidence(data):
         ignore_index=True,
     )
 
-    # ---------------------------------------------
-    # Candidate explanation 2: refund
-    # ---------------------------------------------
+    # -------------------------------------------------
+    # Candidate explanation 2:
+    # Refund of ₹500
+    # -------------------------------------------------
+
+    refund_date = (
+        pd.Timestamp(
+            payment["created_at"]
+        )
+        + pd.Timedelta(days=1)
+    )
 
     new_refund = {
         "refund_id": "REF_CONFLICT_01",
         "payment_id": payment_id,
         "refund_amount": conflict_amount,
-        "refund_date": (
-            pd.Timestamp(
-                payment["created_at"]
-            )
-            + pd.Timedelta(days=1)
-        ),
+        "refund_date": refund_date,
         "status": "PROCESSED",
     }
 
@@ -444,21 +458,22 @@ def inject_conflicting_evidence(data):
         ignore_index=True,
     )
 
-    # ---------------------------------------------
-    # Create a settlement that is Rs. 500 lower
-    # than the original expected amount.
+    # -------------------------------------------------
+    # IMPORTANT:
     #
-    # This means:
+    # Do NOT add these candidate records to the
+    # authoritative ledger.
     #
-    # Extra fee of Rs. 500 could explain it.
-    # OR
-    # Refund of Rs. 500 could explain it.
-    #
-    # Both are possible explanations.
-    # ---------------------------------------------
+    # The ledger remains internally consistent
+    # with the settlement.
+    # -------------------------------------------------
+
+    # -------------------------------------------------
+    # Create a ₹500 settlement discrepancy
+    # -------------------------------------------------
 
     expected_without_conflict = (
-        payment["amount"]
+        payment_amount
         - original_fee
     )
 
@@ -477,12 +492,18 @@ def inject_conflicting_evidence(data):
             "PAY00007 does not have a settlement."
         )
 
-    settlement_index = settlement_rows.index[0]
+    settlement_index = (
+        settlement_rows.index[0]
+    )
 
     data["settlements"].at[
         settlement_index,
         "settlement_amount",
     ] = conflicted_settlement
+
+    # -------------------------------------------------
+    # Ground truth
+    # -------------------------------------------------
 
     return {
         "exception_id": "EX00007",
@@ -494,7 +515,6 @@ def inject_conflicting_evidence(data):
         "difference": conflict_amount,
         "expected_behavior": "HUMAN_REVIEW",
     }
-
 
 # ---------------------------------------------------------
 # Build complete exception batch
