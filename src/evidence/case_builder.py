@@ -1,9 +1,14 @@
 from pathlib import Path
 
 import pandas as pd
-from completeness import (
-    calculate_evidence_completeness,
-)
+try:
+    from .completeness import (
+        calculate_evidence_completeness,
+    )
+except ImportError:
+    from completeness import (
+        calculate_evidence_completeness,
+    )
 
 
 PROJECT_ROOT = (

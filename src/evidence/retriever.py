@@ -1,13 +1,31 @@
 from pathlib import Path
 
 import pandas as pd
-from case_builder import build_investigation_case
-from completeness import (
-    calculate_evidence_completeness,
-)
-from consistency import (
-    check_evidence_consistency,
-)
+try:
+    from .case_builder import (
+        build_investigation_case,
+    )
+
+    from .completeness import (
+        calculate_evidence_completeness,
+    )
+
+    from .consistency import (
+        check_evidence_consistency,
+    )
+
+except ImportError:
+    from case_builder import (
+        build_investigation_case,
+    )
+
+    from completeness import (
+        calculate_evidence_completeness,
+    )
+
+    from consistency import (
+        check_evidence_consistency,
+    )
 
 
 # ---------------------------------------------------------
