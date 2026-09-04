@@ -169,6 +169,7 @@ def identify_exception_reason(
     payments_df = data["payments"]
     fees_df = data["fees"]
     refunds_df = data["refunds"]
+    ledger_df = data["ledger"]
 
     reasons = []
     statuses = []
@@ -241,27 +242,184 @@ def identify_exception_reason(
 
         if difference <= 0.01:
 
-            reasons.append("NONE")
-            statuses.append("MATCH")
+            reasons.append(
+                "NONE"
+            )
+
+            statuses.append(
+                "MATCH"
+            )
 
             continue
 
         # -------------------------------------------------
-        # 4. Look for conflicting explanations
+        # 4. Source-to-ledger consistency
         #
-        # We compare the discrepancy itself.
+        # Only use this as a deterministic discriminator
+        # when both sides of the relationship actually exist.
+        #
+        # This allows:
+        #
+        #     source amount != ledger amount
+        #
+        # to identify a specific upstream mismatch without
+        # treating a missing ledger record as automatically
+        # equivalent to an amount mismatch.
+        # -------------------------------------------------
+
+        ledger_rows = ledger_df[
+            ledger_df["payment_id"].astype(str)
+            == str(payment_id)
+        ]
+
+        fee_rows = fees_df[
+            fees_df["payment_id"].astype(str)
+            == str(payment_id)
+        ]
+
+        refund_rows = refunds_df[
+            refunds_df["payment_id"].astype(str)
+            == str(payment_id)
+        ]
+
+        # -------------------------------------------------
+        # Fee source ↔ ledger FEE
+        # -------------------------------------------------
+
+        fee_consistent = None
+
+        ledger_fee_rows = ledger_rows[
+            ledger_rows[
+                "entry_type"
+            ]
+            .astype(str)
+            .str.upper()
+            == "FEE"
+        ]
+
+        if (
+            not fee_rows.empty
+            and not ledger_fee_rows.empty
+        ):
+
+            source_fee = round(
+                fee_rows[
+                    "fee_amount"
+                ].sum(),
+                2,
+            )
+
+            ledger_fee = round(
+                ledger_fee_rows[
+                    "amount"
+                ].sum(),
+                2,
+            )
+
+            fee_consistent = (
+                abs(
+                    abs(source_fee)
+                    - abs(ledger_fee)
+                )
+                <= 0.01
+            )
+
+        # -------------------------------------------------
+        # Refund source ↔ ledger REFUND
+        # -------------------------------------------------
+
+        refund_consistent = None
+
+        ledger_refund_rows = ledger_rows[
+            ledger_rows[
+                "entry_type"
+            ]
+            .astype(str)
+            .str.upper()
+            == "REFUND"
+        ]
+
+        if (
+            not refund_rows.empty
+            and not ledger_refund_rows.empty
+        ):
+
+            source_refund = round(
+                refund_rows[
+                    "refund_amount"
+                ].sum(),
+                2,
+            )
+
+            ledger_refund = round(
+                ledger_refund_rows[
+                    "amount"
+                ].sum(),
+                2,
+            )
+
+            # Ledger refunds are stored as negative values.
+            refund_consistent = (
+                abs(
+                    abs(source_refund)
+                    - abs(ledger_refund)
+                )
+                <= 0.01
+            )
+
+        # -------------------------------------------------
+        # One clear source-to-ledger mismatch
+        #
+        # Only classify it when the other relevant
+        # relationship is actually present and consistent.
+        # -------------------------------------------------
+
+        if (
+            fee_consistent == False
+            and refund_consistent == True
+        ):
+
+            reasons.append(
+                "FEE_MISMATCH"
+            )
+
+            statuses.append(
+                "EXCEPTION"
+            )
+
+            continue
+
+        if (
+            fee_consistent == True
+            and refund_consistent == False
+        ):
+
+            reasons.append(
+                "REFUND_MISMATCH"
+            )
+
+            statuses.append(
+                "EXCEPTION"
+            )
+
+            continue
+
+        # -------------------------------------------------
+        # 5. Existing discrepancy-based explanation logic
+        #
+        # Used when:
+        #
+        # - both upstream relationships are consistent,
+        # - one or both relationships are unavailable,
+        # - or the evidence remains genuinely ambiguous.
         # -------------------------------------------------
 
         fee_explanation = False
         refund_explanation = False
 
-        # ---------------------------------------------
+        # -------------------------------------------------
         # Candidate A: extra fee explains difference
-        # ---------------------------------------------
-
-        fee_rows = fees_df[
-            fees_df["payment_id"] == payment_id
-        ]
+        # -------------------------------------------------
 
         expected_fee = round(
             payment_amount * 0.02,
@@ -269,39 +427,51 @@ def identify_exception_reason(
         )
 
         actual_fee = round(
-            fee_rows["fee_amount"].sum(),
+            fee_rows[
+                "fee_amount"
+            ].sum(),
             2,
         ) if not fee_rows.empty else 0.0
 
         extra_fee = round(
-            actual_fee - expected_fee,
+            actual_fee
+            - expected_fee,
             2,
         )
 
-        if abs(extra_fee - difference) <= 0.01:
+        if abs(
+            extra_fee
+            - difference
+        ) <= 0.01:
+
             fee_explanation = True
 
-        # ---------------------------------------------
+        # -------------------------------------------------
         # Candidate B: refund explains difference
-        # ---------------------------------------------
-
-        refund_rows = refunds_df[
-            refunds_df["payment_id"] == payment_id
-        ]
+        # -------------------------------------------------
 
         total_refund = round(
-            refund_rows["refund_amount"].sum(),
+            refund_rows[
+                "refund_amount"
+            ].sum(),
             2,
         ) if not refund_rows.empty else 0.0
 
-        if abs(total_refund - difference) <= 0.01:
+        if abs(
+            total_refund
+            - difference
+        ) <= 0.01:
+
             refund_explanation = True
 
-        # ---------------------------------------------
+        # -------------------------------------------------
         # Both explanations fit
-        # ---------------------------------------------
+        # -------------------------------------------------
 
-        if fee_explanation and refund_explanation:
+        if (
+            fee_explanation
+            and refund_explanation
+        ):
 
             reasons.append(
                 "CONFLICTING_EVIDENCE"
@@ -313,9 +483,9 @@ def identify_exception_reason(
 
             continue
 
-        # ---------------------------------------------
+        # -------------------------------------------------
         # Fee explanation only
-        # ---------------------------------------------
+        # -------------------------------------------------
 
         if fee_explanation:
 
@@ -329,9 +499,9 @@ def identify_exception_reason(
 
             continue
 
-        # ---------------------------------------------
+        # -------------------------------------------------
         # Refund explanation only
-        # ---------------------------------------------
+        # -------------------------------------------------
 
         if refund_explanation:
 
@@ -345,9 +515,9 @@ def identify_exception_reason(
 
             continue
 
-        # ---------------------------------------------
+        # -------------------------------------------------
         # Generic settlement mismatch
-        # ---------------------------------------------
+        # -------------------------------------------------
 
         reasons.append(
             "SETTLEMENT_AMOUNT_MISMATCH"
@@ -357,9 +527,13 @@ def identify_exception_reason(
             "EXCEPTION"
         )
 
-    payment_view["exception_reason"] = reasons
+    payment_view[
+        "exception_reason"
+    ] = reasons
 
-    payment_view["reconciliation_status"] = statuses
+    payment_view[
+        "reconciliation_status"
+    ] = statuses
 
     return payment_view
 
@@ -438,6 +612,34 @@ def build_exception_report(
         exception_condition,
         "final_status",
     ] = "EXCEPTION"
+
+    # -----------------------------------------------------
+    # Explicitly classify missing-ledger-entry cases.
+    #
+    # This is only used when the reconciliation itself did
+    # not identify a more specific exception reason.
+    # -----------------------------------------------------
+
+    missing_ledger_reason = (
+        (
+            payment_view[
+                "ledger_status"
+            ]
+            == "EXCEPTION"
+        )
+        &
+        (
+            payment_view[
+                "exception_reason"
+            ]
+            == "NONE"
+        )
+    )
+
+    payment_view.loc[
+        missing_ledger_reason,
+        "exception_reason",
+    ] = "MISSING_LEDGER_ENTRY"
 
     return payment_view
 
