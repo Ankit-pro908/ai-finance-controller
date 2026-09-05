@@ -440,7 +440,7 @@ def identify_exception_reason(
         )
 
         if abs(
-            extra_fee
+            abs(extra_fee)
             - difference
         ) <= 0.01:
 

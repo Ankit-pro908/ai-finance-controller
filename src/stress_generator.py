@@ -715,7 +715,7 @@ if __name__ == "__main__":
 
     scenarios = (
         generate_stress_cases(
-            case_count=100,
+            case_count=500,
             seed=42,
         )
     )

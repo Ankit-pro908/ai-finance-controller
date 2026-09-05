@@ -84,16 +84,44 @@ def decide_next_action(
 
     # -------------------------------------------------
     # HARD SAFETY GATE 4:
-    # Evidence conflicts
+    # Structural/ambiguous evidence conflicts
+    #
+    # The controller may legitimately contain the
+    # financial conflict that defines the exception
+    # currently being investigated. That conflict alone
+    # must not override a uniquely verified hypothesis.
+    #
+    # Only explicit ambiguity/structural conflicts remain
+    # hard blockers here.
     # -------------------------------------------------
 
-    if conflicts:
+    blocking_conflicts = []
+
+    for conflict in conflicts:
+
+        conflict_type = str(
+            conflict.get(
+                "type",
+                "",
+            )
+        ).strip().upper()
+
+        if conflict_type in {
+            "AMBIGUOUS_EXPLANATIONS",
+            "CONFLICTING_EVIDENCE",
+        }:
+
+            blocking_conflicts.append(
+                conflict
+            )
+
+    if blocking_conflicts:
 
         return {
             "decision": "HUMAN_REVIEW",
             "reason": (
-                "Evidence contains conflicts "
-                "or ambiguous explanations."
+                "Evidence contains ambiguous or "
+                "structurally conflicting explanations."
             ),
         }
 

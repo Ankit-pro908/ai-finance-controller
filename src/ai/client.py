@@ -9,8 +9,8 @@ from src.ai.response_schema import (
     AI_RESPONSE_JSON_SCHEMA,
 )
 
+MODEL_NAME = "openai/gpt-oss-120b"
 
-MODEL_NAME = "openai/gpt-oss-20b"
 
 # =========================================================
 # API RETRY POLICY
