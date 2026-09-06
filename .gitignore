@@ -1,5 +1,22 @@
-.venv/
-__pycache__/
-*.pyc
+# Environment / secrets
 .env
-.DS_Store
+.env.*
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# IDE
+.vscode/
+
+# Debug / local artifacts
+debug_*.txt
