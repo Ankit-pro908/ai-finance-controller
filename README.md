@@ -1,5 +1,10 @@
 # AI Finance Controller
 
+**🚀 Live Demo:** https://ai-finance-controller-908.streamlit.app/
+
+**📦 GitHub:** https://github.com/Ankit-pro908/ai-finance-controller
+
+
 ## Evidence-First Investigation and Resolution of Payment Reconciliation Exceptions
 
 An AI-assisted financial investigation controller that starts with deterministic reconciliation, investigates difficult exceptions using a payment-focused LLM, validates the evidence behind every hypothesis, checks whether the proposed cause is actually causal, tests hypothetical corrections through counterfactual simulation, and only then decides between a **Resolution Candidate** and **Human Review**.
