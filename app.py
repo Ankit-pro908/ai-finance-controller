@@ -114,7 +114,15 @@ st.markdown(
     /* Hide Streamlit chrome that is not part of the product UI */
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
-    header { visibility: hidden; }
+    /* Keep Streamlit sidebar controls accessible */
+    header {
+        visibility: visible;
+    }
+    [data-testid="stSidebarCollapseButton"] {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
 
     /* Sidebar buttons */
     [data-testid="stSidebar"] .stButton > button {
