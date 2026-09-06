@@ -115,14 +115,25 @@ st.markdown(
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
     /* Keep Streamlit sidebar controls accessible */
-    header {
-        visibility: visible;
-    }
-    [data-testid="stSidebarCollapseButton"] {
-        display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-    }
+header {
+    visibility: visible;
+    background: transparent !important;
+    height: 3.5rem !important;
+}
+
+[data-testid="stSidebarCollapseButton"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Keep the custom application header below Streamlit's toolbar */
+.block-container {
+    max-width: 1660px;
+    padding-top: 4.5rem !important;
+    padding-bottom: 2rem;
+}
+
 
     /* Sidebar buttons */
     [data-testid="stSidebar"] .stButton > button {
