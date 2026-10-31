@@ -1,4 +1,4 @@
-import pandas as pd
+﻿import pandas as pd
 
 from src.controller.causal_verifier import (
     verify_hypothesis,
@@ -88,6 +88,7 @@ def test_refund_hypothesis_is_causally_supported():
                 "record_id": "REF00001",
                 "field": "refund_amount",
                 "observed_value": 3062.92,
+                "proposed_value": 2812.92,
                 "role": "REFUND_AMOUNT",
             },
         ],
@@ -136,6 +137,7 @@ def test_wrong_delta_is_rejected():
                 "record_id": "REF00001",
                 "field": "refund_amount",
                 "observed_value": 3062.92,
+                "proposed_value": 2812.92,
                 "role": "REFUND_AMOUNT",
             },
         ],
